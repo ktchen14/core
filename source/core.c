@@ -2,13 +2,12 @@
 
 #include <assert.h>
 #include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
+
+#include "core-x86_64.h"
 
 _Thread_local core_t *core_active;
-_Thread_local core_t core_main = {0};
-
-#include "core-x86_64.c"
+_Thread_local core_t *core_main;
+_Thread_local core_t main_core = {0};
 
 void *estate_switch(estate_t *target, void *result, estate_t *source)
   __attribute__((nonnull(1, 3)));
@@ -23,9 +22,10 @@ core_t *core_initialize(
   return core;
 }
 
-__attribute__((used))
-core_t *return_active(void) {
-  return core_active;
+__attribute__((constructor))
+void core_initialize_thread(void) {
+  if (core_active == NULL)
+    core_active = &main_core;
 }
 
 void *core_switch(core_t *next, void *result) {
@@ -38,7 +38,7 @@ void *core_switch(core_t *next, void *result) {
 
 void *core_resume(core_t *next, void *result) {
   // Can't resume into the "main" core
-  assert(next != &core_main);
+  assert(next != &main_core);
 
   // Can't resume into a core that hasn't returned
   assert(core_active->return_to == NULL);
@@ -53,7 +53,7 @@ void *core_resume(core_t *next, void *result) {
 
 void *core_return(void *result) {
   // Can't return from the "main" core
-  assert(core_active != &core_main);
+  assert(core_active != &main_core);
 
   // Can't return without a core to return to
   assert(core_active->return_to != NULL);
@@ -61,9 +61,4 @@ void *core_return(void *result) {
   core_t *next = core_active->return_to;
   core_active->return_to = NULL;
   return core_switch(next, result);
-}
-
-__attribute__((constructor))
-void core_initialize_thread(void) {
-  core_active = &core_main;
 }

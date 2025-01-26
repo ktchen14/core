@@ -3,26 +3,38 @@
 
 #include <stddef.h>
 
-// An architecture specific data structure to restore a core
-typedef void *estate_t;
-
 typedef struct core_t core_t;
-struct core_t {
-  _Alignas(max_align_t) estate_t estate;
 
-  // The core that should resume when this core does core_return(), or @c NULL
-  // if no such core exists
-  core_t *return_to;
-};
-
-/// The active core in the thread, or @c NULL if no core is active
+/// The active core in the thread
 extern _Thread_local core_t *core_active;
 
 /// The main core in the thread
-extern _Thread_local core_t core_main;
+extern _Thread_local core_t *core_main;
 
-/// Must be called in a thread, when it's created, before anything else
+/**
+ * @brief Initialize the core subsystem within a thread
+ *
+ * This must be called in each thread before any object or function declared in
+ * this header is accessed or called. This is idempotent; it may be called more
+ * than once in a thread. It's unnecessary to call this in the main thread of a
+ * process.
+ */
 void core_initialize_thread(void);
+
+/**
+ * @brief Create a @a core to call @a task with an allocation of the specified
+ *   @a size
+ *
+ * The behavior is undefined if:
+ *   - @a task is @c NULL
+ *   - @a size is @c 0
+ *
+ * @param task the function to call when the returned core is switched into
+ * @param size the size of the allocation for the core
+ * @return a newly allocated and initialized core on success; otherwise @c NULL
+ */
+core_t *core_create(void *(*task)(void *), size_t size)
+  __attribute__((nonnull));
 
 /**
  * @brief Initialize the @a core to call @a task with the @a allocation
