@@ -18,14 +18,7 @@ core_t *core_initialize(
   estate_t estate;
   if ((estate = estate_initialize(task, size, allocation)) == NULL)
     return NULL;
-
-  *core = (core_t) { .estate = estate };
-  return core;
-}
-
-__attribute__((used))
-core_t *return_active(void) {
-  return core_active;
+  return *core = (core_t) { .estate = estate }, core;
 }
 
 void *core_switch(core_t *next, void *result) {
